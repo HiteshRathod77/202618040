@@ -1,25 +1,44 @@
 import pandas as pd
+import numpy as np
+import re
 
-
-# Load raw dataset
+# Load dataset
 df = pd.read_csv("raw_books.csv")
 
+# Remove duplicate books
+df = df.drop_duplicates(subset="upc")
 
-# -----------------------------
-# 1. Clean price
-# -----------------------------
+# Clean text columns
+text_columns = [
+    "title",
+    "category",
+    "availability",
+    "description"
+]
 
+for column in text_columns:
+    df[column] = (
+        df[column]
+        .fillna("")
+        .astype(str)
+        .str.strip()
+    )
+
+# Handle missing descriptions
+df["description"] = df["description"].replace(
+    "",
+    "No description available"
+)
+
+# Convert price to numeric
 df["price"] = (
     df["price"]
-    .str.replace("£", "", regex=False)
+    .astype(str)
+    .str.extract(r"(\d+\.\d+)")[0]
     .astype(float)
 )
 
-
-# -----------------------------
-# 2. Convert rating to numbers
-# -----------------------------
-
+# Convert ratings to numbers
 rating_map = {
     "One": 1,
     "Two": 2,
@@ -28,140 +47,58 @@ rating_map = {
     "Five": 5
 }
 
-df["rating"] = df["rating"].str.replace(
-    "star-rating ", "", regex=False
-)
-
 df["rating"] = df["rating"].map(rating_map)
 
-
-# -----------------------------
-# 3. Extract stock count
-# -----------------------------
-
-df["stock_count"] = df["availability"].str.extract(
-    r"(\d+)"
-).astype(int)
-
-
-# -----------------------------
-# 4. Clean description
-# -----------------------------
-
-df["description"] = df["description"].fillna(
-    "No description available"
+# Extract stock count
+df["stock_count"] = (
+    df["availability"]
+    .str.extract(r"(\d+)")[0]
+    .fillna(0)
+    .astype(int)
 )
 
-
-# -----------------------------
-# Check results
-# -----------------------------
-
-print("\nCleaned data:")
-print(df.head())
-
-print("\nData types:")
-print(df.dtypes)
-
-print("\nStock count:")
-print(df["stock_count"].head())
-
-print("\nRating:")
-print(df["rating"].head())
-
-print("\nPrice:")
-print(df["price"].head())
-
-
-#2 hitesh
-
-# -----------------------------
-# 5. Feature Engineering
-# -----------------------------
-
-# Feature 1: Number of words in description
+# Feature 1
 df["description_word_count"] = (
     df["description"]
     .str.split()
     .str.len()
 )
 
-
-# Feature 2: Price band
+# Feature 2
 df["price_band"] = pd.cut(
     df["price"],
     bins=[0, 20, 40, 60, 100],
-    labels=["Low", "Medium", "High", "Very High"]
+    labels=[
+        "Low",
+        "Medium",
+        "High",
+        "Very High"
+    ]
 )
 
-
-# Feature 3: Affordability score
+# Feature 3
 df["affordability_score"] = (
     df["rating"] / df["price"]
 )
 
+# Missing values
+print("\nMissing values:")
+print(df.isnull().sum())
 
-# Display new features
-print("\nNew Features:")
+# Duplicate UPC values
+print("\nDuplicate UPC values:")
+print(df["upc"].duplicated().sum())
 
-print(
-    df[
-        [
-            "title",
-            "description_word_count",
-            "price_band",
-            "affordability_score"
-        ]
-    ].head()
-)
-
-#3 hitesh
+# Total records
+print("\nTotal records:")
+print(len(df))
 
 # Save cleaned dataset
-df.to_csv("cleaned_books.csv", index=False)
+df.to_csv(
+    "cleaned_books.csv",
+    index=False
+)
 
-print("\nCleaned dataset saved as cleaned_books.csv")
+print("\nCleaned dataset saved.")
 
-print("\nAverage book price:")
-print(df["price"].mean())
-
-
-print("\nAverage price by category:")
-
-category_prices = df.groupby("category")["price"].mean()
-
-print(category_prices)
-
-
-print("\nMost expensive book:")
-
-most_expensive = df.loc[df["price"].idxmax()]
-
-print(most_expensive[["title", "price", "category"]])
-
-
-print("\nCheapest book:")
-
-cheapest = df.loc[df["price"].idxmin()]
-
-print(cheapest[["title", "price", "category"]])
-
-
-print("\nNumber of books by rating:")
-
-rating_counts = df["rating"].value_counts().sort_index()
-
-print(rating_counts)
-
-
-print("\nAverage price by rating:")
-
-rating_prices = df.groupby("rating")["price"].mean()
-
-print(rating_prices)
-
-print("\nCorrelation between rating and price:")
-
-correlation = df["rating"].corr(df["price"])
-
-print(correlation)
+print(df.head())
