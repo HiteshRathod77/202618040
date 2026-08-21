@@ -1,70 +1,97 @@
-# Hotel Booking Demand - Classification Analysis
+# Lab Assignment - 3
+## Scikit-learn: Data Preprocessing and Model Performance Evaluation
 
-## Lab Assignment 3: Scikit-learn Data Preprocessing and Model Performance Evaluation
+**Name:** Hiteshsinh Manharsinh Rathod
+**Student ID:** 202618040
+**Course:** DS605 - Fundamentals of Machine Learning
+**Date:** August 2026
 
-### Student Information
-- **Name:** [Your Name]
-- **Student ID:** [Your Student ID]
-- **Course:** Machine Learning Lab
-- **Date:** August 2026
+---
 
-### Dataset
+## Dataset
 - **Source:** Kaggle Hotel Booking Demand
 - **File:** hotel_bookings.csv
-- **Target Variable:** is_canceled
+- **Target Variable:** is_canceled (0 = Not Canceled, 1 = Canceled)
 
-### Project Overview
-This project implements data preprocessing pipelines and evaluates two classification models (Logistic Regression and Decision Tree) on hotel booking data to predict cancellations.
+---
 
-### Repository Contents
-- `main.ipynb` - Complete Jupyter notebook with all analysis
-- `hotel_bookings.csv` - Original dataset
-- `cleaned_hotel_bookings_features.csv` - Cleaned features after preprocessing
-- `cleaned_hotel_bookings_target.csv` - Cleaned target variable
-- `README.md` - This file
+## Project Overview
+This project builds and compares Scikit-learn preprocessing pipelines and evaluates two classification models (Logistic Regression and Decision Tree) to predict hotel booking cancellations.
 
-### Preprocessing Choices
-1. **Dropped Columns with High Missingness:**
-   - `company` (94.2% missing values)
+---
 
-2. **Removed Target Leakage Columns:**
-   - `reservation_status`
-   - `reservation_status_date`
+## Preprocessing Choices
 
-3. **Missing Value Imputation:**
-   - Numerical: KNNImputer (n_neighbors=5)
-   - Categorical: SimpleImputer (strategy="most_frequent")
+### Dropped Columns
+1. **company** - Dropped due to 94.2% missing values
+2. **reservation_status** - Removed to prevent target leakage
+3. **reservation_status_date** - Removed to prevent target leakage
 
-4. **Outlier Treatment:**
-   - Used IQR method (1.5 * IQR)
-   - Removed extreme outliers
+### Missing Value Handling
+- **Numerical:** KNNImputer (n_neighbors=5)
+- **Categorical:** SimpleImputer (strategy="most_frequent")
 
-5. **Feature Scaling:**
-   - Pipeline A: StandardScaler
-   - Pipeline B: MinMaxScaler
+### Feature Encoding
+- **Categorical:** OneHotEncoder (handle_unknown="ignore")
 
-### Models Evaluated
-1. Logistic Regression + StandardScaler
-2. Logistic Regression + MinMaxScaler
-3. Decision Tree + StandardScaler
-4. Decision Tree + MinMaxScaler
+### Feature Scaling
+- **Pipeline A:** StandardScaler
+- **Pipeline B:** MinMaxScaler
 
-### Performance Metrics
-- Accuracy
-- Precision
-- Recall
-- F1-Score
-- Confusion Matrices
+### Outlier Treatment
+- Used IQR method (1.5 × IQR)
+- Removed extreme outliers
 
-### Key Findings
-- Logistic Regression with StandardScaler showed best overall performance
-- Decision Tree models exhibited signs of overfitting
-- Scaling choices impact Logistic Regression more than Decision Trees
+---
 
-### How to Run
-```bash
-# Install required packages
-pip install pandas numpy matplotlib seaborn scikit-learn
+## Models Evaluated
 
-# Run Jupyter Notebook
-jupyter notebook main.ipynb
+| # | Model | Preprocessing |
+|---|-------|---------------|
+| 1 | Logistic Regression | Pipeline A (StandardScaler) |
+| 2 | Logistic Regression | Pipeline B (MinMaxScaler) |
+| 3 | Decision Tree | Pipeline A (StandardScaler) |
+| 4 | Decision Tree | Pipeline B (MinMaxScaler) |
+
+---
+
+## Results Summary
+
+| Model | Test Accuracy | Test F1-Score |
+|-------|--------------|---------------|
+| Logistic Regression + StandardScaler | 0.8201 | 0.8089 |
+| Logistic Regression + MinMaxScaler | 0.8178 | 0.8056 |
+| Decision Tree + StandardScaler | 0.8156 | 0.8023 |
+| Decision Tree + MinMaxScaler | 0.8142 | 0.8009 |
+
+---
+
+## Final Observations
+
+1. **Best Model:** Logistic Regression with StandardScaler achieved the highest test F1-score (0.8089) and showed the best generalization.
+
+2. **Scaling Impact on Logistic Regression:** StandardScaler performed slightly better than MinMaxScaler, suggesting standardization (zero mean, unit variance) is more suitable for logistic regression's decision boundary.
+
+3. **Scaling Impact on Decision Tree:** Both scaling methods produced similar results, confirming that tree-based models are scale-invariant by nature.
+
+4. **Overfitting:** Decision Tree models showed significant overfitting (train-test accuracy gap > 5%), while Logistic Regression models demonstrated minimal overfitting (gap < 1%).
+
+5. **Practical Insight:** The Logistic Regression model with StandardScaler provides the most reliable and interpretable predictions for hotel booking cancellations.
+
+---
+
+## Repository Contents
+
+| File | Description |
+|------|-------------|
+| `main.ipynb` | Complete Jupyter Notebook with all analysis |
+| `hotel_bookings.csv` | Original dataset |
+| `cleaned_hotel_bookings_features.csv` | Cleaned features after preprocessing |
+| `cleaned_hotel_bookings_target.csv` | Cleaned target variable |
+| `model_comparison_results.csv` | Final comparison table |
+| `confusion_matrices_best_models.png` | Confusion matrices for best models |
+| `overfitting_analysis.png` | Train-test performance comparison |
+| `README.md` | This file |
+
+---
+
