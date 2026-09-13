@@ -1,0 +1,38 @@
+{
+  "feature_cols": [
+    "neighbourhood_group",
+    "neighbourhood",
+    "latitude",
+    "longitude",
+    "room_type",
+    "minimum_nights",
+    "number_of_reviews",
+    "reviews_per_month",
+    "calculated_host_listings_count",
+    "availability_365",
+    "days_since_last_review",
+    "has_reviews",
+    "dist_to_center_km",
+    "is_multi_host"
+  ],
+  "num_cols": [
+    "latitude",
+    "longitude",
+    "minimum_nights",
+    "number_of_reviews",
+    "reviews_per_month",
+    "calculated_host_listings_count",
+    "availability_365",
+    "days_since_last_review",
+    "dist_to_center_km"
+  ],
+  "cat_cols": [
+    "neighbourhood_group",
+    "room_type",
+    "has_reviews",
+    "is_multi_host"
+  ],
+  "high_card_col": [
+    "neighbourhood"
+  ]
+}
