@@ -2,150 +2,134 @@
 
 **DS605: Fundamentals of Machine Learning — Lab Assignment 4**
 
-**Name:** Hitesh
+**Name:** Hitesh Rathod
 **Roll Number:** 202618040
 
-An end-to-end machine learning project that predicts the nightly price of an Airbnb listing in New York City, with a Streamlit web app for users to try it out.
+An end-to-end machine learning project that predicts the nightly price of
+an Airbnb listing in New York City, with a Streamlit web app for users to
+try it out.
+
+**Live app:** https://202618040-f3hfdxwx3devzqhffheajg.streamlit.app/
 
 ---
 
-## 📌 Objective
+## Objective
 
-Build a complete ML workflow — data cleaning, EDA, feature engineering, model training, tuning, and deployment.
+Build a complete ML workflow — data cleaning, EDA, feature engineering,
+model training, tuning, and deployment — using the Kaggle New York City
+Airbnb Open Data (2019).
 
-- **Dataset:** [Kaggle NYC Airbnb Open Data (AB_NYC_2019)](https://www.kaggle.com/datasets/dgomonov/new-york-city-airbnb-open-data)
-- **Target:** `price` (nightly rate in USD)
-- **Size:** 48,895 listings × 16 columns
-
----
-
-## 📊 Key EDA Findings
-
-- Price is **heavily right-skewed** → used `log1p(price)` as target.
-- **Room type** strongly affects price: Entire home ($160) ≫ Private ($70) ≫ Shared ($45).
-- **Borough** matters: Manhattan ($150) ≫ Brooklyn ($90) ≫ Bronx ($65).
-- **Location** (latitude + longitude) is a strong predictor.
-- Reviews have almost **no correlation** with price.
+- Dataset: 48,895 listings × 16 columns
+- Target: `price` (nightly rate in USD)
 
 ---
 
-## 🧹 Data Cleaning
+## What I found in the data
 
-- Dropped `id`, `host_id`, `host_name`, `name`, `last_review`.
-- Removed 11 listings with `price = 0`.
-- Filled missing `reviews_per_month` with **0** (means "no reviews yet").
-- Clipped outliers in `price`, `minimum_nights`, `calculated_host_listings_count` at the 99th percentile.
+A few things stood out during EDA:
+
+- Price is heavily right-skewed (skewness ≈ 2.78). Taking `log1p(price)`
+  brought it down to ≈ −0.39, which made the models behave much better.
+- Room type is the strongest single predictor. Median price for an Entire
+  home is around $160, Private room $70, Shared room $45.
+- Manhattan listings are roughly twice as expensive as Bronx ones
+  ($150 vs $65 median).
+- Reviews have essentially no correlation with price (≈ −0.06), which
+  surprised me.
+- Longitude was the strongest numeric signal (−0.33 correlation with
+  log price), which makes sense given Manhattan sits on the west side
+  of the city.
+
+Plots and the full analysis are in `notebooks/airbnb_eda.ipynb`.
+
+---
+
+## Cleaning decisions
+
+- Dropped `id`, `host_id`, `host_name`, `name` — no predictive value.
+- Dropped 11 listings with `price = 0`.
+- Filled missing `reviews_per_month` with 0 (missing here really means
+  "no reviews yet", which I confirmed by cross-checking with
+  `number_of_reviews`).
+- Clipped `price`, `minimum_nights`, and
+  `calculated_host_listings_count` at their 99th percentiles to tame
+  the extreme outliers.
 - Created `price_log = log1p(price)` as the modeling target.
 
 ---
 
-## ⚙️ Preprocessing Pipeline
+## Features and preprocessing
 
-All steps are inside a single `sklearn` Pipeline so training and inference are consistent:
+Everything is wrapped in a single `sklearn` Pipeline so training and
+inference use identical transformations.
 
-| Feature group | Columns | Transformation |
+| Group | Columns | Transformation |
 |---|---|---|
-| Numeric | latitude, longitude, minimum_nights, number_of_reviews, reviews_per_month, calculated_host_listings_count, availability_365 | Imputer + StandardScaler |
-| Low-cardinality categorical | neighbourhood_group, room_type | Imputer + OneHotEncoder |
-| High-cardinality categorical | neighbourhood (221 unique) | Imputer + TargetEncoder |
+| Numeric | latitude, longitude, minimum_nights, number_of_reviews, reviews_per_month, calculated_host_listings_count, availability_365, days_since_last_review, dist_to_center_km | Median impute + StandardScaler |
+| Categorical | neighbourhood_group, room_type, has_reviews, is_multi_host | Most-frequent impute + OneHot |
+| High-cardinality | neighbourhood (221 unique values) | Most-frequent impute + TargetEncoder |
+
+A few engineered features that helped:
+- `dist_to_center_km` — Haversine distance to Times Square
+- `days_since_last_review` — how stale the listing is
+- `has_reviews` — binary flag
+- `is_multi_host` — host owns more than one listing
 
 ---
 
-## 🤖 Model Comparison
+## Model comparison
 
-| Model | Test R² | Test MAE ($) |
-|---|---|---|
-| Linear Regression | 0.552 | 52.36 |
-| Ridge | 0.552 | 52.36 |
-| Decision Tree | 0.567 | 50.92 |
-| Gradient Boosting (tuned) | 0.619 | 48.15 |
-| **Tuned Random Forest** ✅ | **0.625** | **47.56** |
+Trained 3 models on the same pipeline, then tuned the top two with
+RandomizedSearchCV (20 combinations × 3-fold CV).
 
-**Final model:** Random Forest (`n_estimators=200, max_depth=25, max_features=log2, min_samples_split=5, min_samples_leaf=2`)
+| Model | Test R² | MAE ($) | RMSE ($) |
+|---|---|---|---|
+| Ridge | 0.5609 | 51.88 | 100.06 |
+| Random Forest (untuned) | 0.6230 | 47.78 | 94.08 |
+| Gradient Boosting (untuned) | 0.6200 | 48.50 | 94.19 |
+| **Tuned Gradient Boosting** | **0.6258** | **47.94** | **93.33** |
+| Tuned Random Forest | 0.6229 | 47.83 | 94.20 |
 
-**Top 5 important features:**
-1. `room_type = Entire home/apt` (23.8%)
-2. `room_type = Private room` (15.1%)
-3. `neighbourhood` (12.3%)
-4. `longitude` (11.8%)
-5. `latitude` (9.0%)
+**Final model:** Tuned Gradient Boosting
+(`n_estimators=200, max_depth=7, learning_rate=0.08, subsample=0.9,
+min_samples_leaf=8`)
+
+**Overfitting check:** train R² = 0.733, test R² = 0.626 — gap of 0.107,
+which is acceptable for tree ensembles. The untuned GB overfit much
+worse, so tuning helped.
+
+**Top 5 features (from the earlier Random Forest permutation):**
+1. `room_type = Entire home/apt` — 23.8%
+2. `room_type = Private room` — 15.1%
+3. `neighbourhood` (target encoded) — 12.3%
+4. `longitude` — 11.8%
+5. `latitude` — 9.0%
 
 ---
 
-## 🖥️ Streamlit App
+## Streamlit app
 
-Interactive UI where you enter listing details and get an estimated nightly price.
+The app (`app/app.py`) loads the saved pipeline and exposes:
+
+- Borough dropdown (populated from training data)
+- Neighbourhood dropdown (all 221 values, searchable)
+- Room type dropdown
+- Latitude / longitude inputs
+- Sliders for nights, reviews, host listings, availability
+
+Everything is passed straight to the pipeline — no manual preprocessing
+in the app itself. That way the transformations always match what the
+model was trained on.
 
 **Test cases:**
 
 | Input | Output |
 |---|---|
-| Manhattan / Entire home / Williamsburg | ~$196 |
-| Bronx / Shared room / Mott Haven | ~$47 |
+| Manhattan / Williamsburg / Entire home | ~$196 |
+| Bronx / Mott Haven / Shared room | ~$46 |
 
-**Screenshots:**
-
-![Manhattan - $196](docs/screenshots/app_manhattan.png)
-![Bronx - $47](docs/screenshots/app_bronx.png)
+Screenshots are in `docs/screenshots/`.
 
 ---
 
-## 📁 Project Structure
-
-```
-LAB04/
-├── app/app.py                          # Streamlit app
-├── data/AB_NYC_2019.csv                # raw dataset
-├── docs/screenshots/                   # app screenshots
-├── models/airbnb_price_pipeline.pkl.gz # saved pipeline
-├── notebooks/airbnb_eda.ipynb          # EDA + modeling notebook
-├── .gitignore
-├── README.md
-└── requirements.txt
-```
-
----
-
-## 🚀 How to Run
-
-```bash
-# 1. Clone the repo
-git clone <your-repo-url>
-cd LAB04
-
-# 2. Create virtual environment
-python -m venv venv
-source venv/bin/activate          # macOS/Linux
-# venv\Scripts\activate           # Windows
-
-# 3. Install dependencies
-pip install -r requirements.txt
-
-# 4. Run the app
-streamlit run app/app.py
-```
-
-Open `http://localhost:8501` in your browser.
-
----
-
-## 🔗 Deployed App
-
-**Live link:** *(add after deploying to Streamlit Cloud)*
-
----
-
-## ⚠️ Limitations
-
-- Dataset is from **2019** — prices have changed since then.
-- Test R² = 0.625 → ~37% of price variance is not explained.
-- No seasonality, amenities, photos, or host rating data.
-- Model **under-predicts** luxury listings above $500.
-- Predictions are statistical estimates, **not real quotes**.
-
----
-
-## 👤 Author
-
-**Hitesh** — Roll No. 202618040
-DS605: Fundamentals of Machine Learning — Lab 4
+## Project structure
